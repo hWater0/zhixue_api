@@ -3,18 +3,19 @@ from Crypto.Cipher import ARC4
 from patch_captcha import get_captcha
 import rsa
 import binascii
+from urllib.parse import quote
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_v1_5
 import base64
-USERNAME = "你的号"
-PASSWORD = "你的密码"
-headers = {
-    "User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
-}
+USERNAME = input("name:")
+PASSWORD = input("password:")
 def get_time():
     return str(round(time.time()*1000))
-def req_jsonp(url,jsonp):
-    content = requests.get(url,headers=headers).text.strip()
+def req_jsonp(url,jsonp,headers=None):
+    hs = {
+        "User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+    }
+    content = requests.get(url,headers=headers if headers else hs).text.strip()
     t = content.split(jsonp+"(")
     return json.loads((t[1][:len(t[1])-1]).replace("\'","").replace("\\",""))
 class RSAUtils:
@@ -92,12 +93,15 @@ def get_cpid(c,did):
         "description": "encrypt",
         "password": RC4Helper.toHexString(RC4Helper.rc4(PASSWORD,"iflytzhixueweb"))
     }
-    res = requests.post(U,data=form_data,headers=headers).json()
-    return res
+    hs = {
+        "User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+    }
+    res = requests.post(U,data=form_data,headers=hs)
+    return res.json(),res.cookies.get_dict()
 def getLT():
     U = "https://open.changyan.com/sso/login?sso_from=zhixuesso&service=https://www.zhixue.com:443/ssoservice.jsp&callback=jQuery035496251942680546_1780136718101&_="+get_time()
     result = req_jsonp(U,"jQuery035496251942680546_1780136718101")
-    return result["data"]["lt"]
+    return result
 def getPassword(lt,p):
     e = "010001"  # 公钥指数 (65537)
     n = "00ccd806a03c7391ee8f884f5902102d95f6d534d597ac42219dd8a79b1465e186c0162a6771b55e7be7422c4af494ba0112ede4eb00fc751723f2c235ca419876e7103ea904c29522b72d754f66ff1958098396f17c6cd2c9446e8c2bb5f4000a9c1c6577236a57e270bef07e7fe7bbec1f0e8993734c8bd4750e01feb21b6dc9"  # 模数
@@ -113,19 +117,39 @@ def getPassword(lt,p):
     k = "LT/" + f_lt + "/" + c_password
     encrypted_password = RSAUtils.encryptedString(public_key, k)
     return encrypted_password
+def cookie_to_str(cookie):
+    s = ""
+    for key in cookie.keys():
+        s += key
+        s += "="
+        s += cookie[key]
+        s += ";"
+    return s[:len(s)-1]
 def login():
     captcha = get_captcha()
     lt = getLT()
     did = str(uuid.uuid4()).upper()
-    URL = "https://open.changyan.com/sso/login?sso_from=zhixuesso&service=https://www.zhixue.com:443/ssoservice.jsp&callback=jQuery035496251942680546_1780136718101"
-    URL += "&captchaId="+get_cpid(captcha,did)["data"]["captchaId"]
-    URL += "&captchaType=third&thirdCaptchaParam="+json.dumps(captcha)
+    cd = get_cpid(captcha,did)
+    ck = cd[1]
+    ck["SSO_R_SESSION_ID"] = lt["data"]["SSO_R_SESSION_ID"]
+    URL = "https://sso.zhixue.com/sso_alpha//login?sso_from=zhixuesso&service=https://www.zhixue.com:443/ssoservice.jsp&callback=jQuery035496251942680546_1780136718101"
+    URL += "&captchaId="+cd[0]["data"]["captchaId"]
+    URL += "&captchaType=third&thirdCaptchaParam="+quote(json.dumps(captcha))
     URL += "&version=v2&encode=true&sourceappname=tkyh,tkyh&_eventId=submit&appId=zx-container-client&client=web&type=loginByNormal&key=auto"
-    URL += "&lt="+lt
-    URL += '&execution=e4s1&customLogoutUrl=//www.zhixue.com&ncetAppId=QLIqXrxyxFsURfFhp4Hmeyh09v6aYTq1&sysCode&behaviorCheckInPc=true&needBehaviorCheck=true&customConfig={"redirectUrl":"https://www.zhixue.com","needSsoLogin":"false"}&username=84882682&encodeType=R2/P/LT'
-    URL += "&password="+getPassword(lt,PASSWORD)
+    URL += "&lt="+lt["data"]["lt"]
+    URL += '&execution=e4s1&customLogoutUrl=//www.zhixue.com&ncetAppId=QLIqXrxyxFsURfFhp4Hmeyh09v6aYTq1&sysCode&behaviorCheckInPc=true&needBehaviorCheck=true&customConfig='+quote('{"redirectUrl":"https://www.zhixue.com","needSsoLogin":"false"}')+'&username='+USERNAME+'&encodeType=R2/P/LT'
+    URL += "&password="+getPassword(lt["data"]["lt"],PASSWORD)
     URL += "&mac="+did+"&useAreaExamNo=true&_="+get_time()
     print(URL)
-    res = req_jsonp(URL,"jQuery035496251942680546_1780136718101")
+    c = cookie_to_str(ck)
+    print(c)
+    hs = {
+        "User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+    }
+    res = requests.get(URL,cookies=ck,headers=hs,allow_redirects=False)
+    print("")
+    print(res.headers.get("Location"))
+    URL = res.headers.get("Location")
+    res = requests.get(URL,cookies=ck,headers=hs,allow_redirects=False)
     print(res)
 login()
