@@ -51,7 +51,7 @@ class RSAUtils:
             s += b"\x00"
             r = max(8, obj.digitSize - 3 - t)
             for u in range(r):
-                s += random.randint(1, 254).to_bytes(1)
+                s += random.randint(1, 254).to_bytes(1, 'big')
             s += b"\x02\x00"
             si = int.from_bytes(s, "little")
             n: int = pow(si, obj.e, obj.m)
