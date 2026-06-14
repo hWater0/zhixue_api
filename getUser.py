@@ -9,17 +9,24 @@ class ZhixueUserLogin():
         self.USERNAME = USERNAME
         self.PASSWORD = PASSWORD
         self.did = str(uuid.uuid4()).upper()
+        self.userId = ""
+        self.login_cookie = ""
     @staticmethod
     def get_time():
         return str(round(time.time()*1000))
     @staticmethod
-    def req_jsonp(url,jsonp,headers=None):
+    def req_jsonp(url,jsonp,headers=None,need_ctx=False):
         hs = {
             "User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
         }
-        content = requests.get(url,headers=headers if headers else hs).text.strip()
+        ctx = requests.get(url,headers=headers if headers else hs)
+        content = ctx.text.strip()
         t = content.split(jsonp+"(")
-        return json.loads((t[1][:len(t[1])-1]).replace("\'","").replace("\\",""))
+        if need_ctx:
+            return (json.loads((t[1][:len(t[1])-1]).replace("\'","").replace("\\","")),ctx)
+        else:
+            return json.loads((t[1][:len(t[1])-1]).replace("\'","").replace("\\",""))
+    
     @staticmethod
     def p_jsonp(content,jsonp):
         t = content.split(jsonp+"(")
@@ -45,7 +52,10 @@ class ZhixueUserLogin():
             "User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
         }
         res = requests.post(U,data=form_data,headers=hs)
-        return res.json(),res.cookies.get_dict()
+        logger.info(res.text)
+        r = res.json()
+        self.userId = r["data"]["userId"]
+        return r,res.cookies.get_dict()
     def getLT(self):
         U = "https://sso.zhixue.com/sso_alpha/login"
         params = {
@@ -145,9 +155,23 @@ class ZhixueUserLogin():
         response_text = res.text.strip()
         data = self.p_jsonp(response_text,cbk)
         logger.info("登录结果 -> "+json.dumps(data))
-        return data
+        logger.info("cookie -> "+self.cookie_to_str(res.cookies))
+        login_url = "https://www.zhixue.com/ssoservice.jsp"
+        payload = {
+            "action":"login",
+            "ticket":data["data"]["st"]
+        }
+        log_res = requests.post(login_url,data=payload)
+        logger.info(log_res.text.strip())
+        c = dict(log_res.cookies)
+        c["deviceId"] = self.did
+        c["loginUserName"] = self.USERNAME
+        c["SSO_R_SESSION_ID"] = lt_data["data"]["SSO_R_SESSION_ID"]
+        c["ui"] = self.userId
+        logger.info(self.cookie_to_str(c))
+        self.login_cookie = c
 if __name__ == "__main__":
     us = input("USERNAME=")
     ps = input("PASSWORD=")
     z = ZhixueUserLogin(us,ps)
-    print(z.login())
+    z.login()

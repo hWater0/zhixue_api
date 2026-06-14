@@ -1,0 +1,6 @@
+https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6-1/wkhtmltox-0.12.6-1.msvc2015-win64.exe
+download !
+wkhtmltopdf
+-bin
+-include
+-lib
