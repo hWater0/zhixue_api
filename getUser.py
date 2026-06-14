@@ -1,8 +1,7 @@
 import requests,json,uuid,time
-from encrptyUtils import RC4Helper
+from encryptUtils import RC4Helper, RSAUtils
 from patch_captcha import get_captcha
 from urllib.parse import quote
-import execjs
 from loguru import logger
 import os
 import urllib.parse
@@ -101,11 +100,8 @@ class ZhixueUserLogin:
     @staticmethod
     def getPassword(lt, p):
         k = "LT/" + str(lt) + "/" + str(p)
-        with open("sso.js","r",encoding="utf-8") as fr:
-            code = fr.read()
-        ctx = execjs.compile(code)
-        encrypted_password = ctx.call("getKey",k)
-        return encrypted_password
+        r = RSAUtils.getKeyPair("010001", "", "00ccd806a03c7391ee8f884f5902102d95f6d534d597ac42219dd8a79b1465e186c0162a6771b55e7be7422c4af494ba0112ede4eb00fc751723f2c235ca419876e7103ea904c29522b72d754f66ff1958098396f17c6cd2c9446e8c2bb5f4000a9c1c6577236a57e270bef07e7fe7bbec1f0e8993734c8bd4750e01feb21b6dc9")
+        return RSAUtils.encryptedString(r, k)
     def login(self, username: str, password: str):
         """
         loginByNormal 普通登录
