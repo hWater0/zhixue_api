@@ -117,7 +117,7 @@ class ZhixueUserLogin:
         """
         logger.info("开始登录")
         logger.info("获取验证码")
-        captcha = get_captcha()
+        captcha = get_captcha(self.loginState)
         logger.info("验证码output - "+json.dumps(captcha))
         logger.info("获取LT参数")
         lt_data = self.getLT()
@@ -182,8 +182,8 @@ class ZhixueUserLogin:
 if __name__ == "__main__":
     z = ZhixueUserLogin("cookies.json")
     if z.getLoginState(False) == "fall":
-        logger.info("请先登录")
+        print("请先登录")
         us = input("USERNAME=")
         ps = getpass.getpass("PASSWORD=")
         z.login(us, ps)
-    logger.info("登录状态" + z.getLoginState())
+    print("登录状态" + z.getLoginState())

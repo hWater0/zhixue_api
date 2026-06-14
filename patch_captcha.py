@@ -15,10 +15,10 @@ headers = {
 }
 def get_time():
     return str(round(time.time()*1000))
-def get_captcha():
+def get_captcha(loginState):
     logger.info("开始获取验证码")
-    GET_CAPTCHA_ID_URL = "https://open.changyan.com/sso/v1/getCaptchaType?sso_from=zhixuesso&callback=jQuery04726437087003722_1780496936268&appId=zx-container-client&client=web&needSsoConf=true&_="
-    result = req_jsonp(GET_CAPTCHA_ID_URL+get_time(),"jQuery04726437087003722_1780496936268")
+    GET_CAPTCHA_ID_URL = "/v1/getCaptchaType?sso_from=zhixuesso&callback=jQuery04726437087003722_1780496936268&appId=zx-container-client&client=web&needSsoConf=true&_="
+    result = req_jsonp(loginState["casUrl"]+GET_CAPTCHA_ID_URL+get_time(),"jQuery04726437087003722_1780496936268")
     captchaConf = json.loads(result["data"]["captchaConf"])
     captcha_id = captchaConf["gt"]
     logger.info("captcha_id="+captcha_id)
@@ -28,7 +28,7 @@ def get_captcha():
         logger.info("正在获取验证码")
         GET_CAPTCHA_URL = "https://xunfei.geetest.com/load?captcha_id="+captcha_id\
                 +"&challenge="+ str(uuid.uuid4())\
-                +"&client_type=0&pt=0&callback=geetest_1780496938625"
+                +"&client_type=0&pt=0&callback=geetest_1780496938625&risk_type=slide"
         result = req_jsonp(GET_CAPTCHA_URL,"geetest_1780496938625")
         captcha_detail = result
         cpt = result["data"]["captcha_type"]
