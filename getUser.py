@@ -8,8 +8,6 @@ import os
 import urllib.parse
 import getpass
 
-COOKIES_PATH = "cookies.json"
-
 class ZhixueUserLogin:
     def __init__(self, cookiesPath):
         self.userId = ""
